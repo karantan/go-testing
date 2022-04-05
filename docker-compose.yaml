@@ -1,0 +1,46 @@
+version: '3'
+
+networks:
+  influxdb-test:
+    driver: bridge
+services:
+  tests:
+    container_name: "tests"
+    build:
+      context: .
+    depends_on:
+      - influxdb
+      # - mysqldb
+    networks:
+      - influxdb-test
+      # - mysqldb-test
+  influxdb:
+    image: influxdb:1.8
+    restart: always
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_BUCKET=telegraf
+    ports:
+      - '8086:8086'
+    expose:
+      - '8086'
+    volumes:
+      - ./docker-scripts/influxdb:/docker-entrypoint-initdb.d
+      - ./tmp/influxdb:/var/lib/influxdb
+    networks:
+      - influxdb-test
+  # mysqldb:
+  #   image: mysql:latest
+  #   restart: always
+  #   environment:
+  #     - MYSQL_DATABASE=foo_com
+  #     - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+  #   ports:
+  #     - '3306:3306'
+  #   expose:
+  #     - '3306'
+  #   volumes:
+  #     - ./docker-scripts/mysql:/docker-entrypoint-initdb.d
+  #     - ./tmp/mysql:/var/lib/mysql
+  #   networks:
+  #     - mysqldb-test
