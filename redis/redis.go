@@ -1,30 +1,52 @@
 package redis
 
-// See this article for another example:
-// https://blog.logrocket.com/how-to-use-redis-as-a-database-with-go-redis/
-
 import (
 	"context"
+	"encoding/json"
+	"time"
 
-	"github.com/go-redis/redis/v8"
+	rtgo "github.com/go-redis/redis/v8"
 )
 
 var ctx = context.Background()
 
-type Database struct {
-	*redis.Client
+type RedisDatabase struct {
+	*rtgo.Client
 }
 
-func NewClient(connectionString string) (*Database, error) {
-	opt, err := redis.ParseURL(connectionString)
-	return &Database{redis.NewClient(opt)}, err
+// NewRedis is an instance of Redis client for this environment
+func NewRedis(connectionString string) (*RedisDatabase, error) {
+	c, err := rtgo.ParseURL(connectionString)
+	return &RedisDatabase{rtgo.NewClient(c)}, err
 }
 
-func GetKey(rdb *Database, key string) (string, error) {
+// GetKey Redis `GET key` command.
+func GetKey(rdb *RedisDatabase, key string) (string, error) {
 	val, err := rdb.Get(ctx, key).Result()
 	return val, err
 }
 
-func SetKey(rdb *Database, key, value string) error {
-	return rdb.Set(ctx, key, value, 0).Err()
+// SetKey Redis `SET key value [expiration]` command.
+func SetKey(rdb *RedisDatabase, key, value string, expiration time.Duration) error {
+	return rdb.Set(ctx, key, value, expiration).Err()
+}
+
+// GetStruct populates `dest` with whatever it is in `key`. Make sure you pass `dest`
+// as a pointer!
+func GetStruct(rdb *RedisDatabase, key string, dest interface{}) error {
+	p, err := rdb.Get(ctx, key).Result()
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal([]byte(p), dest)
+}
+
+// SetStruct does the Redis `SET key value [expiration]` command.
+func SetStruct(rdb *RedisDatabase, key string, value interface{}, expiration time.Duration) error {
+	p, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	_, err = rdb.Set(ctx, key, p, expiration).Result()
+	return err
 }
